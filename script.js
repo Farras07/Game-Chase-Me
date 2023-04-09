@@ -12,6 +12,10 @@ const streetTop = new Image()
 streetTop.src = "./assets/background/1 Tiles/IndustrialTile_81.png"
 const jump = new Image();
 jump.src = './assets/karakter/Biker_jump.png'
+const shopImage = new Image()
+shopImage.src = './assets/shop/shop.png'
+
+let gameStart= false
 
 let previousTime = null;
 let PlatformsController = null;
@@ -20,18 +24,16 @@ const GAME_SPEED_INCREMENT = 0.0001;
 let speed = GAME_SPEED_START
 
 const gravity = 0.5
-const gameFrame = 50000
-let numberPress = 0
-let press = false
+const gameFrame = 8000
 let isRunnersjump = false
 let gameOver = false
+let isRunnerWin=false
+let pressStart = false
+let firstGame= true 
 
 const PLATFORMS_CONFIG = [
     { width: 50, height: 55 , image: "./assets/background/3 Objects/Barrel2.png" },
     { width: 32, height: 32 , image: "./assets/background/3 Objects/Box1.png" },
-    // { width: 25 , height: 32 , image: "./assets/background/3 Objects/Box2.png" },
-    // { width: 32 , height: 32 , image: "./assets/background/3 Objects/Box8.png" },
-    // { width: 36 , height: 36 , image: "./assets/background/3 Objects/Locker2.png" },
 
   ];
 class Background {
@@ -44,9 +46,13 @@ class Background {
     }
     draw(){
         ctx.drawImage(bg,this.position.x,this.position.y,this.width,canvas.height)
-        for(let x = 0;x<=gameFrame;x+=this.width){
+        for(let x = 0;x<=gameFrame+canvas.width;x+=this.width){
             ctx.drawImage(bg,this.position.x+x,this.position.y,this.width,canvas.height)
         }
+        const fontSize = 50 ;
+        ctx.font = `${fontSize}px serif`;
+        ctx.fillStyle = "rgb(0,0,0)";
+        ctx.fillText("FINISH",this.position.x+gameFrame+200,200)
 
     }
     update(){
@@ -57,8 +63,44 @@ class Background {
             this.position.x =-gameFrame
         }
     }
+    reset(){
+        this.position.x=0
+    }
 }
+class shop {
+    constructor(y){
+        this.position={
+            x:gameFrame+canvas.width,
+            y
+        }
+        this.Image = shopImage
+        this.frameMax=6
+        this.width=708/6
+        this.height=128
+        this.frameIndex = 0
+        this.frame = [
+            {x:0,y:0,w:this.width,h:this.height},
+            {x:this.width,y:0,w:this.width,h:this.height},
+            {x:this.width*2,y:0,w:this.width,h:this.height},
+            {x:this.width*3,y:0,w:this.width,h:this.height},
+            {x:this.width*4,y:0,w:this.width,h:this.height},
+            {x:this.width*5,y:0,w:this.width,h:this.height},
+            {x:this.width*6,y:0,w:this.width,h:this.height},
+        ]
+    }
+    draw(){
+        let frameImage = this.frame[this.frameIndex]
+        ctx.drawImage(this.Image,frameImage.x,frameImage.y,frameImage.w,frameImage.h,this.position.x,this.position.y,this.width,this.height)
+    }
+    update(){
+        this.frameIndex = 0 + (Math.floor(Date.now() / 100) % 6);
+        this.position.x-=speed
 
+    }
+    reset(xBackground){
+        this.position.x = xBackground+gameFrame+200
+    }
+}
 class Player {
     constructor(x,y,key,playerImage){
         this.position={
@@ -71,7 +113,11 @@ class Player {
         }
         this.width = 48
         this.height = 48
+        this.numberPress = 0
         this.framesIndex = 0
+        this.isJump=false
+        this.numberCollide = 0
+        this.isCollide =false
         this.playerImage = playerImage
         this.frame = [
             {x:0,y:0,w:this.width,h:this.height},
@@ -89,17 +135,17 @@ class Player {
         ]
         addEventListener('keydown',({keyCode})=>{
 
-            if(keyCode === key && runners.position.y>=344 && numberPress<=2){
+            if(keyCode === key && this.position.y>=344 && this.numberPress<=2){
         
-                press = true
+                this.isJump = true
                 this.velocity.y -= 8
             }
         })
         addEventListener('keyup',({keyCode})=>{
-            press=false
-            numberPress++
-            if(numberPress>=2){
-                numberPress=0
+            this.isJump=false
+            this.numberPress++
+            if(this.numberPress>=2){
+                this.numberPress=0
             }
 
             
@@ -118,7 +164,7 @@ class Player {
         
     }
     update(){
-        if(press){
+        if(this.isJump){
             isRunnersjump===true
             this.framesIndex = 6 + (Math.floor(Date.now() / 100) % 4); // animate right frames
         }
@@ -160,6 +206,12 @@ class street{
             ctx.drawImage(streetTop,x,460)
             ctx.drawImage(streetBase,x,470)
         }
+        // if(this.position.x <=-gameFrame){
+        //     const fontSizeScore = 20 ;
+        //     ctx.font = `${fontSizeScore}px serif`;
+        //     ctx.fillStyle = "#525250";
+        //     ctx.fillText("FINISH",290,200)
+        // }
     }
     update(){
         if(this.position.x>-gameFrame){
@@ -169,6 +221,9 @@ class street{
             speed = 0
             this.position.x =-gameFrame
         }
+    }
+    reset(){
+        this.position.x=0
     }
 }
 class platform{
@@ -182,39 +237,54 @@ class platform{
         this.image = image
     }
     draw(){
+        // if(this.position.x<=-gameFrame + canvas.width+2000){
+        //     PlatformsController.plato = []
+        // }
+        // else{
         ctx.drawImage(this.image,this.position.x, this.position.y, this.width, this.height);
+
     }
     update(){
         this.position.x -= speed
         // this.position.x -= speed
         
     }
-    collideWith(sprite){
+    collideWith(runner,dog){
         const adjustBy=1.6
-        console.log(`runners x = ${sprite.height + sprite.position.y / adjustBy} `)
-        console.log(`platforms x = ${ this.position.y} `)
+        // console.log(`runners x = ${sprite.height + sprite.position.y / adjustBy} `)
+        // console.log(`platforms x = ${ this.position.y} `)
             // if(runners.position.x+runners.width/2 === Plt.position.x && 
     // runners.position.y>=Platform.position.y-Platform.height
     // ){
 
         if(
-            sprite.position.x <= this.position.x + this.width / adjustBy &&
-            sprite.position.x + sprite.width/adjustBy>= this.position.x &&
-            sprite.position.y >= this.position.y - this.height/adjustBy &&
-            sprite.height + sprite.position.y / adjustBy < this.position.y
+            runner.position.x <= this.position.x + this.width / adjustBy &&
+            runner.position.x + runner.width/adjustBy>= this.position.x &&
+            runner.position.y >= this.position.y - this.height/adjustBy &&
+            runner.height + runner.position.y / adjustBy < this.position.y
+
             
         ){
+            // runner.numberCollide++
+            isRunnerWin = false
             return true
         }
-        else{
-            // console.log('runner x ='+sprite.position.)
-            return false
+        else if(
+            dog.position.x <= this.position.x + this.width / adjustBy &&
+            dog.position.x + dog.width/adjustBy>= this.position.x &&
+            dog.position.y >= this.position.y - this.height/adjustBy &&
+            dog.height + dog.position.y / adjustBy < this.position.y
+        ){
+            isRunnerWin = true
+            return true
         }
+
     }
 }
 class platformController{
     INTERVAL_MIN = 500
-    INTERVAL_MAX = 1200
+    INTERVAL_MAX = 1300
+    INTERVAL_MAX_DECREMENT = 0.1
 
     nextPlatformInterval = null
     plato=[]
@@ -240,10 +310,23 @@ class platformController{
     createPlatform() {
         const index = this.getRandomNumber(0, this.platformsImages.length - 1);
         let y = null
+        if(index ===0 ){
+            y=408
+        }
+        else{
+            y=430
+        }
         const PlatformImage = this.platformsImages[index];
         const x = canvas.width;
-        const pltfrm = new platform(x,430,PlatformImage.width,PlatformImage.height, PlatformImage.image);
-        this.plato.push(pltfrm);
+        const pltfrm = new platform(x,y,PlatformImage.width,PlatformImage.height, PlatformImage.image);
+        if(Street.position.x>=-gameFrame + canvas.width+600){
+            this.plato.push(pltfrm);
+            console.log('hey')
+        }
+        else{
+            console.log(Street.position.x)
+
+        }
     }
     update(frameTimeDelta) {
         if (this.nextPlatformInterval <= 0) {
@@ -255,20 +338,66 @@ class platformController{
         this.plato.forEach((platform) => {
         platform.update(this.speed, frameTimeDelta);
         });
+        this.INTERVAL_MAX-= this.INTERVAL_MAX_DECREMENT
     }
 
     draw() {
         this.plato.forEach((platform) => platform.draw());
     }
-    collideWith(sprite){
-        return this.plato.some((platform)=>platform.collideWith(sprite))
+    collideWith(runner,dog){
+        return this.plato.some((platform)=>platform.collideWith(runner,dog))
     }
+    reset(){
+        this.plato=[]
+        this.INTERVAL_MAX=1300
+    }
+}
+
+class score{
+    constructor(){
+        this.score = 0
+        this.highScoreKey = "HIGHSCORE" 
+    }
+    update(frameTimeDelta){
+        this.score += frameTimeDelta * 0.01;
+
+    }
+    reset() {
+        this.score = 0;
+      }
+    setHighScore() {
+    const highScore = Number(localStorage.getItem(this.highScoreKey));
+    if (this.score > highScore) {
+      localStorage.setItem(this.highScoreKey, Math.floor(this.score));
+    }
+  }
+  draw() {
+    const highScore = Number(localStorage.getItem(this.highScoreKey));
+    const y = 40;
+
+    const fontSizeScore = 20 ;
+    ctx.font = `${fontSizeScore}px serif`;
+    ctx.fillStyle = "#525250";
+    const scoreX = canvas.width - 150;
+    const highScoreX = scoreX - 125 ;
+
+    const scorePadded = Math.floor(this.score).toString().padStart(6, 0);
+    const highScorePadded = highScore.toString().padStart(6, 0);
+
+    ctx.fillText(scorePadded, scoreX, y);
+    ctx.fillText(`HI ${highScorePadded}`, highScoreX, y);
+  }
+  reset(){
+    this.score=0
+  }
 }
 //----------
 const background = new Background()
+const Shop = new shop(332)
 const runners = new Player(200,400,38,runner)
 const dogs = new Player(100,400,87,dog)
 const Street= new street({x:0,y:0})
+const Score = new score()
 const clearScreen=()=>{
     ctx.clearRect(0,0,canvas.width,canvas.height)
 
@@ -290,53 +419,117 @@ PlatformsController = new platformController(
 function updateGameSpeed(frameTimeDelta) {
     speed += frameTimeDelta * GAME_SPEED_INCREMENT;
 }
+const gameOverDisplay =(isRunnerWin)=>{
+    const fontSize = 70
+    ctx.font = `${fontSize}px Verdana`
+    ctx.fillStyle = "rgb(0, 0, 0)"
+    const xRunner = canvas.width/3.3
+    const xDog = canvas.width/2.8
+    const y = canvas.height/2
+    if(isRunnerWin || Street.position.x === -gameFrame){
+        ctx.fillText("RUNNER WIN!",xRunner,y)
+    }
+    else{
+        ctx.fillText("DOG WIN!",xDog,y)
+    }
 
+}
+const showStartText=()=>{
+    const fontSize = 55
+    ctx.font = `${fontSize}px Verdana`
+    ctx.fillStyle = "rgb(0, 0, 0)"
+    const x = canvas.width/3.8
+    const y = canvas.height/2
+    ctx.fillText("Press Space to Start",x,y)
+}
+const setupGameReset =()=>{
+    if(!pressStart){
+        pressStart = true
+    }
+    setTimeout(()=>{
+        window.addEventListener('keyup',({keyCode})=>{
+            if(keyCode === 32&&!gameStart){
+                reset()
+            }
+        })
+    },500)
+}
+const reset =()=>{
+    firstGame=false
+    pressStart=false
+    gameOver=false
+    gameStart=true
+    background.reset()
+    Shop.reset(background.position.x)
+    Street.reset()
+    Score.reset()
+    coba = false
+    PlatformsController.reset()
+    speed = GAME_SPEED_START
+}
+const drawSprites = ()=>{
+    background.draw()
+    Street.draw()
+    PlatformsController.draw()
+    runners.draw()
+    dogs.draw()
+    Score.draw()
+    Shop.draw()
+}
 const animate = (currentTime) =>{
     if (previousTime === null) {
         previousTime = currentTime;
         requestAnimationFrame(animate);
         return;
-      }
+    }
     const frameTimeDelta = currentTime - previousTime;
     previousTime = currentTime;
-
+    
     clearScreen()
+    drawSprites()
+    if(!gameStart&&firstGame){
+        showStartText()
+    }
 
-    if(!gameOver){
+    if(!gameOver && gameStart){
         if(Street.position.x>-gameFrame){
             background.update()
             PlatformsController.update(frameTimeDelta)
             Street.update()
             runners.update()
             dogs.update()
+            Score.update(frameTimeDelta);
+            Shop.update()
+            updateGameSpeed(frameTimeDelta)
+
             
         }
     }
-    else{
+    
+    if(gameOver){
+        gameOverDisplay(isRunnerWin)
+        gameStart=false
     }
-    const a = PlatformsController.collideWith(runners)
-    if(!gameOver && a){
+    if(!gameOver && PlatformsController.collideWith(runners,dogs)||Street.position.x<=-gameFrame){
+        Score.setHighScore()
         gameOver=true
+        setupGameReset()
+        // if(runners.numberCollide==2){
+        //     Score.setHighScore()
+        //     gameOver=true
+        //     setupGameReset()
+        // }
+        // else if(dog.numberCollide)
+        
     }
-    console.log(a)
-    background.draw()
-    Street.draw()
-    PlatformsController.draw()
-    runners.draw()
-    dogs.draw()
-
-    updateGameSpeed(frameTimeDelta)
-    // if(runners.position.x+runners.width/2 === Plt.position.x && 
-    // runners.position.y>=Platform.position.y-Platform.height
-    // ){
-    //     alert('hey')
-    // }
     requestAnimationFrame(animate)
 }
 
-
-
-
 requestAnimationFrame(animate)
 
+window.addEventListener('keyup',({keyCode})=>{
+    if(keyCode === 32 && !gameStart){
+        reset()
+    }
+})
 
