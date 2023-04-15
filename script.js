@@ -27,7 +27,7 @@ const GAME_SPEED_INCREMENT = 0.0001;
 let speed = GAME_SPEED_START
 
 const gravity = 0.5
-const gameFrame = 3000
+const gameFrame = 20000
 const jumpHeightMax = 320
 let isRunnersjump = false
 let gameOver = false
