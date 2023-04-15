@@ -1,7 +1,7 @@
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
-const dog =new Image()
-dog.src = "./assets/dog/Walk.png"
+const dogRun =new Image()
+dogRun.src = "./assets/dog/Walk.png"
 let runner = new Image()
 runner.src = "./assets/karakter/Biker_run.png"
 const bg = new Image()
@@ -14,6 +14,9 @@ const jump = new Image();
 jump.src = './assets/karakter/Biker_jump.png'
 const shopImage = new Image()
 shopImage.src = './assets/shop/shop.png'
+const dogIdle = new Image()
+dogIdle.src = './assets/dog/Idle.png'
+
 
 let gameStart= false
 
@@ -24,12 +27,14 @@ const GAME_SPEED_INCREMENT = 0.0001;
 let speed = GAME_SPEED_START
 
 const gravity = 0.5
-const gameFrame = 8000
+const gameFrame = 3000
+const jumpHeightMax = 320
 let isRunnersjump = false
 let gameOver = false
-let isRunnerWin=false
+let isRunnerWin=null
 let pressStart = false
 let firstGame= true 
+const idleDog =false
 
 const PLATFORMS_CONFIG = [
     { width: 50, height: 55 , image: "./assets/background/3 Objects/Barrel2.png" },
@@ -49,10 +54,7 @@ class Background {
         for(let x = 0;x<=gameFrame+canvas.width;x+=this.width){
             ctx.drawImage(bg,this.position.x+x,this.position.y,this.width,canvas.height)
         }
-        const fontSize = 50 ;
-        ctx.font = `${fontSize}px serif`;
-        ctx.fillStyle = "rgb(0,0,0)";
-        ctx.fillText("FINISH",this.position.x+gameFrame+200,200)
+
 
     }
     update(){
@@ -70,7 +72,7 @@ class Background {
 class shop {
     constructor(y){
         this.position={
-            x:gameFrame+canvas.width,
+            x:gameFrame+1000,
             y
         }
         this.Image = shopImage
@@ -91,6 +93,10 @@ class shop {
     draw(){
         let frameImage = this.frame[this.frameIndex]
         ctx.drawImage(this.Image,frameImage.x,frameImage.y,frameImage.w,frameImage.h,this.position.x,this.position.y,this.width,this.height)
+        const fontSize = 50 ;
+        ctx.font = `${fontSize}px serif`;
+        ctx.fillStyle = "rgb(0,0,0)";
+        ctx.fillText("FINISH",this.position.x-30,200)
     }
     update(){
         this.frameIndex = 0 + (Math.floor(Date.now() / 100) % 6);
@@ -98,7 +104,7 @@ class shop {
 
     }
     reset(xBackground){
-        this.position.x = xBackground+gameFrame+200
+        this.position.x = xBackground+gameFrame+1000
     }
 }
 class Player {
@@ -127,24 +133,28 @@ class Player {
             {x:48*4,y:0,w:this.width,h:this.height},
             {x:48*5,y:0,w:this.width,h:this.height},
             {x:48*6,y:0,w:this.width,h:this.height},
-            { x: 0, y: 0, w: 48, h: 48 }, // up
-            { x: 48, y: 0, w: 48, h: 48 }, // up
-            { x: 48*2, y: 0, w: 48, h: 48 }, // up
-            { x: 48*3, y: 0, w: 48, h: 48 }, // up}
+            { x: 192/4, y: 0, w: this.width, h: this.height }, 
+            { x: 192/4*2, y: 0, w: this.width, h: this.height },
+            { x: 192/4*3, y: 0, w: this.width, h: this.height }, 
+            { x: 192/4*3, y: 0, w: this.width, h: this.height }, 
             
         ]
         addEventListener('keydown',({keyCode})=>{
 
-            if(keyCode === key && this.position.y>=344 && this.numberPress<=2){
-        
+            if(keyCode === key && 
+                this.position.y>=jumpHeightMax && 
+                this.numberPress<=2 &&
+                Street.position.x>=-gameFrame + 800)
+                {
+                playSound("./assets/backsound/Arcade-8-bit-jump.mp3",".sfxJump",false)
+                this.numberPress++
                 this.isJump = true
                 this.velocity.y -= 8
             }
         })
         addEventListener('keyup',({keyCode})=>{
             this.isJump=false
-            this.numberPress++
-            if(this.numberPress>=2){
+            if(this.numberPress>=2||this.position.y>=412||this.position.y<=jumpHeightMax){
                 this.numberPress=0
             }
 
@@ -154,33 +164,19 @@ class Player {
     draw(){
         let frame = this.frame[this.framesIndex]
         ctx.drawImage(this.playerImage,frame.x,frame.y,frame.w,frame.h,this.position.x,this.position.y,this.width,this.height)
-        // if(isRunnersjump){
-        //     ctx.drawImage(jump,frame.x,frame.y,frame.w,frame.h,this.position.x,this.position.y,this.width,this.height)
-            
-        // }
-        // else{
-        //     ctx.drawImage(runner,frame.x,frame.y,frame.w,frame.h,this.position.x,this.position.y,this.width,this.height)
-        // }
-        
+  
     }
     update(){
         if(this.isJump){
             isRunnersjump===true
-            this.framesIndex = 6 + (Math.floor(Date.now() / 100) % 4); // animate right frames
+            this.framesIndex = 7 + (Math.floor(Date.now() / 100) % 4); // animate right frames
         }
         else{
             isRunnersjump===false
             this.framesIndex = 0 + (Math.floor(Date.now() / 100) % 6); // animate right frames
         }
 
-        // if(this.framesIndex<6){
-        //     this.framesIndex+=1
-
-        // }
-        // else{
-        //     this.framesIndex=0
-
-        // }
+  
         this.position.y += this.velocity.y
         if(this.position.y + this.height+this.velocity.y <= 460){
             this.velocity.y += gravity
@@ -189,6 +185,97 @@ class Player {
             this.velocity.y = 0
         }
 
+    }
+    reset(x){
+        this.position.x=x
+    }
+}
+class Dog {
+    constructor(x,y,key,dogRun,dogIdle){
+        this.position={
+            x,
+            y
+        }
+        this.velocity ={
+            x:0,
+            y:5
+        }
+        this.width = 48
+        this.height = 48
+        this.numberPress = 0
+        this.framesIndex = 0
+        this.isJump=false
+        this.numberCollide = 0
+        this.isCollide =false
+        this.dogRun = dogRun
+        this.dogIdle = dogIdle
+        this.frame = [
+            {x:0,y:0,w:this.width,h:this.height},
+            {x:48,y:0,w:this.width,h:this.height},
+            {x:48*2,y:0,w:this.width,h:this.height},
+            {x:48*3,y:0,w:this.width,h:this.height},
+            {x:48*4,y:0,w:this.width,h:this.height},
+            {x:48*5,y:0,w:this.width,h:this.height},
+            {x:48*6,y:0,w:this.width,h:this.height},
+            { x: 192/4, y: 0, w: this.width, h: this.height }, 
+            { x: 192/4*2, y: 0, w: this.width, h: this.height },
+            { x: 192/4*3, y: 0, w: this.width, h: this.height }, 
+            { x: 192/4*3, y: 0, w: this.width, h: this.height }, 
+            { x: 192/4*4, y: 0, w: this.width, h: this.height }, 
+            
+        ]
+        addEventListener('keydown',({keyCode})=>{
+
+            if(keyCode === key && 
+                this.position.y>=jumpHeightMax && 
+                this.numberPress<=2 &&
+                Street.position.x>=-gameFrame + 800)
+                {
+                this.numberPress++
+                this.isJump = true
+                this.velocity.y -= 8
+            }
+        })
+        addEventListener('keyup',({keyCode})=>{
+            this.isJump=false
+            if(this.numberPress>=2||this.position.y>=412||this.position.y<=jumpHeightMax){
+                this.numberPress=0
+            }
+
+            
+        })
+    }
+    draw(){
+        let frame = this.frame[this.framesIndex]
+        if(Street.position.x>-gameFrame){
+            ctx.drawImage(this.dogRun,frame.x,frame.y,frame.w,frame.h,this.position.x,this.position.y,this.width,this.height)
+        }
+        else{
+            console.log(this.framesIndex)
+            ctx.drawImage(this.dogIdle,frame.x,frame.y,frame.w,frame.h,this.position.x,this.position.y,this.width,this.height)
+        }
+    }
+    update(){
+        if(Street.position.x>-gameFrame){
+            isRunnersjump===false
+            this.framesIndex = 0 + (Math.floor(Date.now() / 100) % 6); // animate right frames
+        }
+        else{
+            isRunnersjump===true
+            this.framesIndex = 7 + (Math.floor(Date.now() / 100) % 4); // animate right frames
+        }
+
+        this.position.y += this.velocity.y
+        if(this.position.y + this.height+this.velocity.y <= 460){
+            this.velocity.y += gravity
+        }
+        else{
+            this.velocity.y = 0
+        }
+
+    }
+    reset(x){
+        this.position.x=x
     }
 }
 class street{
@@ -200,18 +287,12 @@ class street{
         this.distance = 32
         this.broke = false
     }
-    //fix this!
     draw(){
         for(let x = this.position.x;x<=gameFrame;x=x+this.distance){
             ctx.drawImage(streetTop,x,460)
             ctx.drawImage(streetBase,x,470)
         }
-        // if(this.position.x <=-gameFrame){
-        //     const fontSizeScore = 20 ;
-        //     ctx.font = `${fontSizeScore}px serif`;
-        //     ctx.fillStyle = "#525250";
-        //     ctx.fillText("FINISH",290,200)
-        // }
+
     }
     update(){
         if(this.position.x>-gameFrame){
@@ -237,32 +318,26 @@ class platform{
         this.image = image
     }
     draw(){
-        // if(this.position.x<=-gameFrame + canvas.width+2000){
-        //     PlatformsController.plato = []
-        // }
-        // else{
+
         ctx.drawImage(this.image,this.position.x, this.position.y, this.width, this.height);
 
     }
     update(){
         this.position.x -= speed
-        // this.position.x -= speed
         
     }
     collideWith(runner,dog){
-        const adjustBy=1.6
-        // console.log(`runners x = ${sprite.height + sprite.position.y / adjustBy} `)
-        // console.log(`platforms x = ${ this.position.y} `)
-            // if(runners.position.x+runners.width/2 === Plt.position.x && 
-    // runners.position.y>=Platform.position.y-Platform.height
-    // ){
+        const adjustByRunnerX=1.5
+        const adjustByDogX=1.3
+        const adjustByRunnerY=1.3
+        const adjustByDogY=1.3
+
 
         if(
-            runner.position.x <= this.position.x + this.width / adjustBy &&
-            runner.position.x + runner.width/adjustBy>= this.position.x &&
-            runner.position.y >= this.position.y - this.height/adjustBy &&
-            runner.height + runner.position.y / adjustBy < this.position.y
-
+            runner.position.x <= this.position.x + this.width / adjustByRunnerX &&
+            runner.position.x + runner.width/adjustByRunnerX>= this.position.x &&
+            runner.position.y >= this.position.y - this.height/adjustByRunnerY &&
+            runner.height + runner.position.y / adjustByRunnerY < this.position.y
             
         ){
             // runner.numberCollide++
@@ -270,10 +345,11 @@ class platform{
             return true
         }
         else if(
-            dog.position.x <= this.position.x + this.width / adjustBy &&
-            dog.position.x + dog.width/adjustBy>= this.position.x &&
-            dog.position.y >= this.position.y - this.height/adjustBy &&
-            dog.height + dog.position.y / adjustBy < this.position.y
+            dog.position.x <= this.position.x + this.width / adjustByDogX &&
+            dog.position.x + dog.width/adjustByDogX>= this.position.x &&
+            dog.position.y >= this.position.y - this.height/adjustByDogY &&
+            dog.height + dog.position.y / adjustByDogY < this.position.y ||
+            runner.position.x>=1000
         ){
             isRunnerWin = true
             return true
@@ -321,10 +397,8 @@ class platformController{
         const pltfrm = new platform(x,y,PlatformImage.width,PlatformImage.height, PlatformImage.image);
         if(Street.position.x>=-gameFrame + canvas.width+600){
             this.plato.push(pltfrm);
-            console.log('hey')
         }
         else{
-            console.log(Street.position.x)
 
         }
     }
@@ -355,47 +429,46 @@ class platformController{
 
 class score{
     constructor(){
-        this.score = 0
-        this.highScoreKey = "HIGHSCORE" 
+        this.scoreRun = 0
+        this.highScoreRunKey = "HIGHSCORE RUN" 
     }
     update(frameTimeDelta){
-        this.score += frameTimeDelta * 0.01;
+        this.scoreRun += frameTimeDelta * 0.01;
 
     }
     reset() {
-        this.score = 0;
+        this.scoreRun = 0;
+        this.scoreChase = 0;
       }
     setHighScore() {
-    const highScore = Number(localStorage.getItem(this.highScoreKey));
-    if (this.score > highScore) {
-      localStorage.setItem(this.highScoreKey, Math.floor(this.score));
+    const highScoreRun = Number(localStorage.getItem(this.highScoreRunKey));
+    if (this.scoreRun > highScoreRun) {
+      localStorage.setItem(this.highScoreRunKey, Math.floor(this.scoreRun));
     }
   }
   draw() {
-    const highScore = Number(localStorage.getItem(this.highScoreKey));
-    const y = 40;
+    const highScoreRun = Number(localStorage.getItem(this.highScoreRunKey));
 
     const fontSizeScore = 20 ;
     ctx.font = `${fontSizeScore}px serif`;
     ctx.fillStyle = "#525250";
-    const scoreX = canvas.width - 150;
-    const highScoreX = scoreX - 125 ;
+    const y = 40;
 
-    const scorePadded = Math.floor(this.score).toString().padStart(6, 0);
-    const highScorePadded = highScore.toString().padStart(6, 0);
-
-    ctx.fillText(scorePadded, scoreX, y);
-    ctx.fillText(`HI ${highScorePadded}`, highScoreX, y);
-  }
-  reset(){
-    this.score=0
+    const scoreRunX = canvas.width - 150;
+    const highScoreRunX = scoreRunX - 125 ;
+    const scorePaddedRun = Math.floor(this.scoreRun).toString().padStart(6, 0);
+    const highScorePaddedRun = highScoreRun.toString().padStart(6, 0);
+    
+    ctx.fillText(scorePaddedRun, scoreRunX, y);
+    ctx.fillText(`HI ${highScorePaddedRun}`, highScoreRunX, y);
+    
   }
 }
 //----------
 const background = new Background()
 const Shop = new shop(332)
-const runners = new Player(200,400,38,runner)
-const dogs = new Player(100,400,87,dog)
+const runners = new Player(200,412,38,runner)
+const dogs = new Dog(100,412,87,dogRun,dogIdle)
 const Street= new street({x:0,y:0})
 const Score = new score()
 const clearScreen=()=>{
@@ -426,11 +499,13 @@ const gameOverDisplay =(isRunnerWin)=>{
     const xRunner = canvas.width/3.3
     const xDog = canvas.width/2.8
     const y = canvas.height/2
-    if(isRunnerWin || Street.position.x === -gameFrame){
+    if(isRunnerWin){
         ctx.fillText("RUNNER WIN!",xRunner,y)
+
     }
     else{
         ctx.fillText("DOG WIN!",xDog,y)
+
     }
 
 }
@@ -446,20 +521,19 @@ const setupGameReset =()=>{
     if(!pressStart){
         pressStart = true
     }
-    setTimeout(()=>{
-        window.addEventListener('keyup',({keyCode})=>{
-            if(keyCode === 32&&!gameStart){
-                reset()
-            }
-        })
-    },500)
 }
 const reset =()=>{
+    playSound("./assets/backsound/Medium-size-dog-barking.mp3",".sfxDog",true)
+    setTimeout(()=>{
+        playSound("./assets/backsound/[Electro] - Nitro Fun & Hyper Potions - Checkpoint [Monstercat Release].mp3",".sfxBacksound",false)
+        
+    },1000)
     firstGame=false
     pressStart=false
     gameOver=false
     gameStart=true
     background.reset()
+    runners.reset(200)        
     Shop.reset(background.position.x)
     Street.reset()
     Score.reset()
@@ -475,6 +549,20 @@ const drawSprites = ()=>{
     dogs.draw()
     Score.draw()
     Shop.draw()
+    
+}
+
+const playSound = (soundfile,selector,loop)=>{
+    return document.querySelector(selector).innerHTML = "<embed src=\""+soundfile+"\" hidden=\"true\" autostart=\"true\" loop=\""+loop+"\"/>";
+
+}
+const pressStartButton =()=>{
+    window.addEventListener('keyup',({keyCode})=>{
+        if(keyCode === 32 && !gameStart){
+            reset()
+        }
+    })
+
 }
 const animate = (currentTime) =>{
     if (previousTime === null) {
@@ -487,22 +575,29 @@ const animate = (currentTime) =>{
     
     clearScreen()
     drawSprites()
+    pressStartButton()
     if(!gameStart&&firstGame){
         showStartText()
     }
-
+    
     if(!gameOver && gameStart){
         if(Street.position.x>-gameFrame){
             background.update()
             PlatformsController.update(frameTimeDelta)
             Street.update()
-            runners.update()
-            dogs.update()
             Score.update(frameTimeDelta);
             Shop.update()
             updateGameSpeed(frameTimeDelta)
-
-            
+        }
+        if(runners.position.x<=1009){
+            if(Street.position.x <= -gameFrame){
+                runners.position.x+=speed
+            }
+            dogs.update()
+            runners.update()
+        }
+        else if(runners.position.x>=1010){
+            runners.position.x = 1010
         }
     }
     
@@ -510,26 +605,25 @@ const animate = (currentTime) =>{
         gameOverDisplay(isRunnerWin)
         gameStart=false
     }
-    if(!gameOver && PlatformsController.collideWith(runners,dogs)||Street.position.x<=-gameFrame){
+    if(!gameOver && PlatformsController.collideWith(runners,dogs)||runners.position.x>=1010){
+        if(gameFrame<2200){
+            isRunnerWin = true
+        }
+        if(isRunnerWin){
+            playSound("./assets/backsound/piglevelwin2mp3-14800.mp3",".sfxBacksound",false)
+        }
+        else{
+            playSound("./assets/backsound/8-bit-video-game-fail-version-2-145478.mp3",".sfxBacksound",false)
+        }
         Score.setHighScore()
         gameOver=true
         setupGameReset()
-        // if(runners.numberCollide==2){
-        //     Score.setHighScore()
-        //     gameOver=true
-        //     setupGameReset()
-        // }
-        // else if(dog.numberCollide)
-        
+
     }
     requestAnimationFrame(animate)
 }
 
 requestAnimationFrame(animate)
 
-window.addEventListener('keyup',({keyCode})=>{
-    if(keyCode === 32 && !gameStart){
-        reset()
-    }
-})
+
 
