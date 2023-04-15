@@ -27,14 +27,12 @@ const GAME_SPEED_INCREMENT = 0.0001;
 let speed = GAME_SPEED_START
 
 const gravity = 0.5
-const gameFrame = 20000
+const gameFrame = 10000
 const jumpHeightMax = 320
-let isRunnersjump = false
 let gameOver = false
 let isRunnerWin=null
 let pressStart = false
 let firstGame= true 
-const idleDog =false
 
 const PLATFORMS_CONFIG = [
     { width: 50, height: 55 , image: "./assets/background/3 Objects/Barrel2.png" },
@@ -122,8 +120,6 @@ class Player {
         this.numberPress = 0
         this.framesIndex = 0
         this.isJump=false
-        this.numberCollide = 0
-        this.isCollide =false
         this.playerImage = playerImage
         this.frame = [
             {x:0,y:0,w:this.width,h:this.height},
@@ -133,10 +129,6 @@ class Player {
             {x:48*4,y:0,w:this.width,h:this.height},
             {x:48*5,y:0,w:this.width,h:this.height},
             {x:48*6,y:0,w:this.width,h:this.height},
-            { x: 192/4, y: 0, w: this.width, h: this.height }, 
-            { x: 192/4*2, y: 0, w: this.width, h: this.height },
-            { x: 192/4*3, y: 0, w: this.width, h: this.height }, 
-            { x: 192/4*3, y: 0, w: this.width, h: this.height }, 
             
         ]
         addEventListener('keydown',({keyCode})=>{
@@ -144,9 +136,9 @@ class Player {
             if(keyCode === key && 
                 this.position.y>=jumpHeightMax && 
                 this.numberPress<=2 &&
-                Street.position.x>=-gameFrame + 800)
+                Street.position.x>=-gameFrame + 800 &&
+                !gameOver)
                 {
-                playSound("./assets/backsound/Arcade-8-bit-jump.mp3",".sfxJump",false)
                 this.numberPress++
                 this.isJump = true
                 this.velocity.y -= 8
@@ -167,12 +159,11 @@ class Player {
   
     }
     update(){
-        if(this.isJump){
-            isRunnersjump===true
-            this.framesIndex = 7 + (Math.floor(Date.now() / 100) % 4); // animate right frames
+        if(this.isJump&&!gameOver){
+            playSound("./assets/backsound/Arcade-8-bit-jump.mp3",".sfxJump",false)
+
         }
         else{
-            isRunnersjump===false
             this.framesIndex = 0 + (Math.floor(Date.now() / 100) % 6); // animate right frames
         }
 
@@ -187,8 +178,8 @@ class Player {
 
     }
     reset(x){
-        this.position.x=x
-    }
+        this.position.x = x
+   }
 }
 class Dog {
     constructor(x,y,key,dogRun,dogIdle){
@@ -205,8 +196,6 @@ class Dog {
         this.numberPress = 0
         this.framesIndex = 0
         this.isJump=false
-        this.numberCollide = 0
-        this.isCollide =false
         this.dogRun = dogRun
         this.dogIdle = dogIdle
         this.frame = [
@@ -229,7 +218,8 @@ class Dog {
             if(keyCode === key && 
                 this.position.y>=jumpHeightMax && 
                 this.numberPress<=2 &&
-                Street.position.x>=-gameFrame + 800)
+                Street.position.x>=-gameFrame + 800 &&
+                !gameOver)
                 {
                 this.numberPress++
                 this.isJump = true
@@ -257,11 +247,9 @@ class Dog {
     }
     update(){
         if(Street.position.x>-gameFrame){
-            isRunnersjump===false
             this.framesIndex = 0 + (Math.floor(Date.now() / 100) % 6); // animate right frames
         }
         else{
-            isRunnersjump===true
             this.framesIndex = 7 + (Math.floor(Date.now() / 100) % 4); // animate right frames
         }
 
@@ -275,7 +263,7 @@ class Dog {
 
     }
     reset(x){
-        this.position.x=x
+        this.position.x = x
     }
 }
 class street{
@@ -534,6 +522,7 @@ const reset =()=>{
     gameStart=true
     background.reset()
     runners.reset(200)        
+    dogs.reset(100)        
     Shop.reset(background.position.x)
     Street.reset()
     Score.reset()
