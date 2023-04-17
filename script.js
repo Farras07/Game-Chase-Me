@@ -27,7 +27,9 @@ const GAME_SPEED_INCREMENT = 0.0001;
 let speed = GAME_SPEED_START
 
 const gravity = 0.5
-const gameFrame = 10000
+// Variabel untuk mengatur titik finish
+const gameFrame = 30000
+// ------
 const jumpHeightMax = 320
 let gameOver = false
 let isRunnerWin=null
@@ -48,7 +50,6 @@ class Background {
         this.width = 1000
     }
     draw(){
-        ctx.drawImage(bg,this.position.x,this.position.y,this.width,canvas.height)
         for(let x = 0;x<=gameFrame+canvas.width;x+=this.width){
             ctx.drawImage(bg,this.position.x+x,this.position.y,this.width,canvas.height)
         }
@@ -67,6 +68,7 @@ class Background {
         this.position.x=0
     }
 }
+
 class shop {
     constructor(y){
         this.position={
@@ -91,6 +93,7 @@ class shop {
     draw(){
         let frameImage = this.frame[this.frameIndex]
         ctx.drawImage(this.Image,frameImage.x,frameImage.y,frameImage.w,frameImage.h,this.position.x,this.position.y,this.width,this.height)
+        // Draw tulisan finish
         const fontSize = 50 ;
         ctx.font = `${fontSize}px serif`;
         ctx.fillStyle = "rgb(0,0,0)";
@@ -101,10 +104,11 @@ class shop {
         this.position.x-=speed
 
     }
-    reset(xBackground){
-        this.position.x = xBackground+gameFrame+1000
+    reset(){
+        this.position.x = gameFrame+1000
     }
 }
+
 class Player {
     constructor(x,y,key,playerImage){
         this.position={
@@ -181,6 +185,7 @@ class Player {
         this.position.x = x
    }
 }
+
 class Dog {
     constructor(x,y,key,dogRun,dogIdle){
         this.position={
@@ -213,6 +218,7 @@ class Dog {
             { x: 192/4*4, y: 0, w: this.width, h: this.height }, 
             
         ]
+        // source code control dog
         addEventListener('keydown',({keyCode})=>{
 
             if(keyCode === key && 
@@ -234,6 +240,7 @@ class Dog {
 
             
         })
+        // ------
     }
     draw(){
         let frame = this.frame[this.framesIndex]
@@ -266,6 +273,7 @@ class Dog {
         this.position.x = x
     }
 }
+
 class street{
     constructor({x,y}){
         this.position={
@@ -295,6 +303,7 @@ class street{
         this.position.x=0
     }
 }
+
 class platform{
     constructor(x, y, width, height, image) {
         this.position={
@@ -345,6 +354,7 @@ class platform{
 
     }
 }
+
 class platformController{
     INTERVAL_MIN = 500
     INTERVAL_MAX = 1300
@@ -452,31 +462,8 @@ class score{
     
   }
 }
-//----------
-const background = new Background()
-const Shop = new shop(332)
-const runners = new Player(200,412,38,runner)
-const dogs = new Dog(100,412,87,dogRun,dogIdle)
-const Street= new street({x:0,y:0})
-const Score = new score()
-const clearScreen=()=>{
-    ctx.clearRect(0,0,canvas.width,canvas.height)
 
-}
-const platformImages = PLATFORMS_CONFIG.map((platform)=>{
-    const image = new Image();
-    image.src = platform.image;
-    return {
-      image,
-      width: platform.width,
-      height: platform.height,
-    };
-})
-PlatformsController = new platformController(
-    platformImages,
-    speed
-  );
-
+// fungsi mempercepat game(background dan street)
 function updateGameSpeed(frameTimeDelta) {
     speed += frameTimeDelta * GAME_SPEED_INCREMENT;
 }
@@ -523,7 +510,7 @@ const reset =()=>{
     background.reset()
     runners.reset(200)        
     dogs.reset(100)        
-    Shop.reset(background.position.x)
+    Shop.reset()
     Street.reset()
     Score.reset()
     coba = false
@@ -553,7 +540,34 @@ const pressStartButton =()=>{
     })
 
 }
+
+//---------- inisiasi class
+const background = new Background()
+const Shop = new shop(332)
+const runners = new Player(200,412,38,runner)
+const dogs = new Dog(100,412,87,dogRun,dogIdle)
+const Street= new street({x:0,y:0})
+const Score = new score()
+const clearScreen=()=>{
+    ctx.clearRect(0,0,canvas.width,canvas.height)
+
+}
+const platformImages = PLATFORMS_CONFIG.map((platform)=>{
+    const image = new Image();
+    image.src = platform.image;
+    return {
+      image,
+      width: platform.width,
+      height: platform.height,
+    };
+})
+PlatformsController = new platformController(
+    platformImages,
+    speed
+  );
+
 const animate = (currentTime) =>{
+    // code untuk menangkap waktu 
     if (previousTime === null) {
         previousTime = currentTime;
         requestAnimationFrame(animate);
